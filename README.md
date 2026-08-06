@@ -185,7 +185,7 @@ Email: admin@traceralumni.test
 Password: password  
 
 ## Link Project
-Repository GitHub: Belum ditambahkan  
+Repository GitHub: https://github.com/Agill171/tracer-alumni-project3-final-fixed
 Link publikasi web: Belum ditambahkan  
 
 ## Hasil Pengujian Manual
