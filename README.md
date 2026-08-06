@@ -86,97 +86,93 @@ Status yang digunakan dalam aplikasi:
 | Framework | Laravel 12 |
 | Tampilan | Blade dan Livewire |
 | Styling | Tailwind CSS |
-| Database | SQLite |
+| Database lokal | SQLite |
+| Database production | PostgreSQL |
 | Build frontend | Vite |
 | Dependency backend | Composer |
 | Dependency frontend | Node.js dan npm |
 | Pengujian | Pest dan PHPUnit |
+| Deployment | Railway |
 
 ## Cara Menjalankan Project
-Pastikan PHP, Composer, Node.js, dan npm sudah terpasang.
+Pastikan PHP, Composer, Node.js, npm, dan Git sudah terpasang.
 
-Clone repository:
-
+Clone repository
 ```bash
-git clone LINK_REPOSITORY_GITHUB
+git clone https://github.com/Agill171/tracer-alumni-project3-final-fixed.git
 ```
 
-Masuk ke folder project:
-
+Masuk ke folder project
 ```bash
-cd tracer-alumni
+cd tracer-alumni-project3-final-fixed
 ```
 
-Install dependency PHP:
-
+Install dependency
 ```bash
 composer install
+npm install
 ```
 
-Salin file konfigurasi pada Windows:
-
+Salin file konfigurasi
 ```bash
 copy .env.example .env
 ```
 
-Buat application key:
-
+Buat application key
 ```bash
 php artisan key:generate
 ```
 
-Buat file database SQLite pada folder `database` dengan nama:
-
+Untuk penggunaan lokal, buat file database berikut
 ```text
-database.sqlite
+database/database.sqlite
 ```
 
-Jalankan migration dan seeder:
+Pastikan file .env menggunakan konfigurasi berikut
+```env
+DB_CONNECTION=sqlite
+```
 
+Jalankan migration dan seeder
 ```bash
 php artisan migrate --seed
 ```
 
-Install dependency frontend:
-
-```bash
-npm install
-```
-
-Build tampilan aplikasi:
-
+Build tampilan aplikasi
 ```bash
 npm run build
 ```
 
-Apabila PowerShell memblokir perintah npm, gunakan:
-
+Apabila PowerShell memblokir perintah npm, gunakan
 ```bash
 npm.cmd install
 npm.cmd run build
 ```
 
-Jalankan aplikasi:
-
+Jalankan aplikasi
 ```bash
 php artisan serve
 ```
 
-Aplikasi lokal dapat dibuka melalui:
-
+Aplikasi lokal dapat dibuka melalui
 ```text
 http://127.0.0.1:8000
 ```
 
-Menjalankan queue:
-
-```bash
-php artisan queue:work
+Website production menggunakan PostgreSQL dan dipublikasikan melalui Railway
+```text
+https://tracer-alumni-project3-final-fixed-production.up.railway.app
 ```
 
-Menjalankan scheduler:
+Konfigurasi database production disimpan pada Railway
+```env
+DB_CONNECTION=pgsql
+DB_URL=${{Postgres.DATABASE_URL}}
+```
 
+Perintah tambahan untuk menjalankan queue dan scheduler
 ```bash
+php artisan queue:work
 php artisan schedule:work
 ```
 
