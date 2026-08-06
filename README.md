@@ -180,9 +180,9 @@ Menjalankan scheduler:
 php artisan schedule:work
 ```
 
-## Akun Demo
+## Akun 
 Email: admin@traceralumni.test  
-Password: password  
+Password: TracerAlumni#Aman2026
 
 ## Link Project
 Repository GitHub: https://github.com/Agill171/tracer-alumni-project3-final-fixed
