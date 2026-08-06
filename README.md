@@ -186,7 +186,8 @@ Password: password
 
 ## Link Project
 Repository GitHub: https://github.com/Agill171/tracer-alumni-project3-final-fixed
-Link publikasi web: Belum ditambahkan  
+
+Link publikasi web: https://tracer-alumni-project3-final-fixed-production.up.railway.app
 
 ## Hasil Pengujian Manual
 Pengujian dilakukan berdasarkan proses yang dirancang pada Daily Project 2.
