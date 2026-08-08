@@ -95,7 +95,7 @@ class AlumniController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'file_excel' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+            'file_excel' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:51200'],
         ]);
 
         $path = $request->file('file_excel')->store('imports');

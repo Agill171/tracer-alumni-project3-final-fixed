@@ -27,7 +27,7 @@
             <form action="{{ route('alumni.import.excel') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <div>
-                    <label for="file_excel" class="block mb-2 font-medium">Pilih file, maksimal 10 MB</label>
+                    <label for="file_excel" class="block mb-2 font-medium">Pilih file, maksimal 50 MB</label>
                     <input id="file_excel" type="file" name="file_excel" accept=".xlsx,.xls,.csv"
                            class="block w-full rounded-xl border border-slate-300 px-4 py-3 bg-white" required>
                 </div>
