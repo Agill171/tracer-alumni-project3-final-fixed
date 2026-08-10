@@ -38,13 +38,7 @@
         <input id="email" type="email" name="email" value="{{ old('email', data_get($record, 'email')) }}"
                class="w-full rounded-xl border border-slate-300 px-4 py-3">
     </div>
-
-    <div>
-        <label for="no_hp" class="block mb-2 font-medium">Nomor HP</label>
-        <input id="no_hp" type="text" name="no_hp" value="{{ old('no_hp', data_get($record, 'no_hp')) }}"
-               class="w-full rounded-xl border border-slate-300 px-4 py-3">
-    </div>
-
+    
     <div>
         <label for="tempat_bekerja" class="block mb-2 font-medium">Tempat Bekerja</label>
         <input id="tempat_bekerja" type="text" name="tempat_bekerja" value="{{ old('tempat_bekerja', data_get($record, 'tempat_bekerja')) }}"
