@@ -15,6 +15,7 @@ use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithUpserts;
+use Maatwebsite\Excel\Concerns\WithUpsertColumns;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
@@ -24,6 +25,7 @@ class AlumniImport implements
     WithChunkReading,
     WithBatchInserts,
     WithUpserts,
+    WithUpsertColumns,
     WithValidation,
     SkipsEmptyRows,
     SkipsOnFailure,
@@ -174,7 +176,7 @@ class AlumniImport implements
      */
     public function batchSize(): int
     {
-        return 500;
+        return 1;
     }
 
     /**
