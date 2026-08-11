@@ -3,12 +3,13 @@
 namespace App\Exports;
 
 use App\Models\Alumni;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
-class AlumniProject4Export implements FromQuery, WithHeadings, WithMapping
+class AlumniProject4Export implements FromQuery, WithHeadings, WithMapping, ShouldQueue
 {
     use Exportable;
 

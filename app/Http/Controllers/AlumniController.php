@@ -6,6 +6,7 @@ use App\Exports\AlumniProject4Export;
 use App\Imports\AlumniImport;
 use App\Models\Alumni;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -108,11 +109,18 @@ class AlumniController extends Controller
 
     public function exportExcel()
     {
-        $filename = 'hasil-pelacakan-alumni-project4-' .
-            now()->format('Ymd-His') .
-            '.xlsx';
+        $filename = 'hasil-pelacakan-alumni-project4.xlsx';
 
-        return (new AlumniProject4Export)->download($filename);
+
+        Storage::disk('s3')->delete($filename);
+
+        (new AlumniProject4Export)->store($filename, 's3');
+
+        return redirect()->route('alumni.index')
+        ->with(
+            'success',
+            'Export Excel sedang diproses melalui antrean. Tunggu hingga proses selesai.'
+        );
     }
 
     private function validatedData(Request $request, ?Alumni $alumni = null): array
