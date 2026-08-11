@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\AlumniProject4Export;
 use App\Imports\AlumniImport;
 use App\Models\Alumni;
 use Illuminate\Http\Request;
@@ -103,6 +104,15 @@ class AlumniController extends Controller
 
         return redirect()->route('alumni.index')
             ->with('success', 'File berhasil diterima dan sedang diproses melalui antrean. Jalankan queue worker untuk menyelesaikan import.');
+    }
+
+    public function exportExcel()
+    {
+        $filename = 'hasil-pelacakan-alumni-project4-' .
+            now()->format('Ymd-His') .
+            '.xlsx';
+
+        return (new AlumniProject4Export)->download($filename);
     }
 
     private function validatedData(Request $request, ?Alumni $alumni = null): array
