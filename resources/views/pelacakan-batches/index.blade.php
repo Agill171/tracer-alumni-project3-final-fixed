@@ -125,7 +125,8 @@
 
                     <p class="text-sm text-amber-700 mt-1">
                         Batch akan menyiapkan query dan tautan pencarian.
-                        Belum melakukan pengambilan hasil internet otomatis.
+                        Status Query Siap berarti query berhasil dibuat,
+                        bukan berarti data Project 4 alumni sudah ditemukan.
                     </p>
                 </div>
 
@@ -173,6 +174,9 @@
                                 \App\Models\PelacakanBatch::STATUS_SELESAI =>
                                     'bg-emerald-100 text-emerald-700',
 
+                                \App\Models\PelacakanBatch::STATUS_QUERY_SIAP =>
+                                    'bg-violet-100 text-violet-700',
+
                                 \App\Models\PelacakanBatch::STATUS_DIPROSES =>
                                     'bg-blue-100 text-blue-700',
 
@@ -210,7 +214,7 @@
 
                                 <div class="text-left lg:text-right">
                                     <p class="text-sm text-slate-500">
-                                        Progress
+                                        Progress Penyiapan Query
                                     </p>
 
                                     <p class="text-2xl font-bold text-slate-900">
@@ -246,12 +250,12 @@
                                     </p>
                                 </div>
 
-                                <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
-                                    <p class="text-xs text-emerald-600">
-                                        Berhasil
+                                <div class="rounded-xl bg-violet-50 border border-violet-200 p-4">
+                                    <p class="text-xs text-violet-600">
+                                        Query Siap
                                     </p>
 
-                                    <p class="text-xl font-bold text-emerald-700 mt-1">
+                                    <p class="text-xl font-bold text-violet-700 mt-1">
                                         {{ number_format($batch->success_items, 0, ',', '.') }}
                                     </p>
                                 </div>
@@ -289,9 +293,19 @@
                                     </p>
 
                                     <p>
-                                        Selesai:
+                                        Selesai Seluruh Pipeline:
                                         {{ $batch->finished_at?->format('d-m-Y H:i:s') ?? '-' }}
                                     </p>
+                                </div>
+                            @endif
+
+                            @if(
+                                $batch->status ===
+                                \App\Models\PelacakanBatch::STATUS_QUERY_SIAP
+                            )
+                                <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-violet-700">
+                                    Semua query dalam batch ini sudah siap.
+                                    Tahap enrichment Project 4 belum dijalankan.
                                 </div>
                             @endif
 

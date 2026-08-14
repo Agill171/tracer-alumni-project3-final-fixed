@@ -15,6 +15,8 @@ class PelacakanBatch extends Model
 
     public const STATUS_DIPROSES = 'Diproses';
 
+    public const STATUS_QUERY_SIAP = 'Query Siap';
+
     public const STATUS_SELESAI = 'Selesai';
 
     public const STATUS_GAGAL = 'Gagal';
@@ -51,6 +53,7 @@ class PelacakanBatch extends Model
         return [
             self::STATUS_DISIAPKAN,
             self::STATUS_DIPROSES,
+            self::STATUS_QUERY_SIAP,
             self::STATUS_SELESAI,
             self::STATUS_GAGAL,
         ];

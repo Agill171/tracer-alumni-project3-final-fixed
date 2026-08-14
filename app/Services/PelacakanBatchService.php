@@ -75,13 +75,14 @@ class PelacakanBatchService
                 ->whereIn('status', [
                     PelacakanBatch::STATUS_DISIAPKAN,
                     PelacakanBatch::STATUS_DIPROSES,
+                    PelacakanBatch::STATUS_QUERY_SIAP,
                 ])
                 ->exists();
 
             if ($activeBatchExists) {
                 throw new RuntimeException(
-                    'Masih ada batch pelacakan yang aktif. '
-                    .'Selesaikan batch tersebut sebelum membuat batch baru.'
+                    'Masih ada batch pelacakan yang belum menyelesaikan seluruh tahapan. '
+                    .'Lanjutkan batch tersebut sebelum membuat batch baru.'
                 );
             }
 
@@ -93,16 +94,28 @@ class PelacakanBatchService
                 );
             }
 
+            /*
+             * Alumni yang masih aktif di batch sebelumnya tidak dipilih.
+             *
+             * Item yang benar-benar gagal boleh dipilih kembali pada batch
+             * berikutnya agar tidak terkunci permanen.
+             */
+            $alumniQuery->whereNotExists(function ($query) {
+                $query
+                    ->selectRaw('1')
+                    ->from('pelacakan_batch_items')
+                    ->whereColumn(
+                        'pelacakan_batch_items.alumni_id',
+                        'alumnis.id'
+                    )
+                    ->where(
+                        'pelacakan_batch_items.status',
+                        '!=',
+                        PelacakanBatchItem::STATUS_GAGAL
+                    );
+            });
+
             $alumniIds = $alumniQuery
-                ->whereNotExists(function ($query) {
-                    $query
-                        ->selectRaw('1')
-                        ->from('pelacakan_batch_items')
-                        ->whereColumn(
-                            'pelacakan_batch_items.alumni_id',
-                            'alumnis.id'
-                        );
-                })
                 ->orderBy('id')
                 ->limit($limit)
                 ->pluck('id');
