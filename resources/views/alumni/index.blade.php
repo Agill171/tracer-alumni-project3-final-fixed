@@ -4,7 +4,9 @@
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
             <h2 class="text-3xl font-bold text-slate-900">Data Alumni</h2>
-            <p class="text-slate-600 mt-1">Kelola profil target dan riwayat pelacakan alumni.</p>
+            <p class="text-slate-600 mt-1">
+                Kelola profil target dan riwayat pelacakan alumni.
+            </p>
         </div>
 
         <div class="flex flex-wrap gap-3">
@@ -22,6 +24,11 @@
                class="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium">
                 Export Excel
             </a>
+
+            <a href="{{ route('alumni.export.download') }}"
+               class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-medium">
+                Download Hasil Export
+            </a>
         </div>
     </div>
 
@@ -31,10 +38,25 @@
         </div>
     @endif
 
-    <form method="GET" action="{{ route('alumni.index') }}"
+    @if($errors->any())
+        <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+            <ul class="list-disc list-inside">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <form method="GET"
+          action="{{ route('alumni.index') }}"
           class="mb-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 grid md:grid-cols-[1fr_280px_auto] gap-3">
+
         <div>
-            <label for="q" class="sr-only">Kata kunci</label>
+            <label for="q" class="sr-only">
+                Kata kunci
+            </label>
+
             <input id="q"
                    type="search"
                    name="q"
@@ -44,11 +66,16 @@
         </div>
 
         <div>
-            <label for="status" class="sr-only">Status</label>
+            <label for="status" class="sr-only">
+                Status
+            </label>
+
             <select id="status"
                     name="status"
                     class="w-full rounded-xl border border-slate-300 px-4 py-3">
-                <option value="">Semua status</option>
+                <option value="">
+                    Semua status
+                </option>
 
                 @foreach($statusOptions as $status)
                     <option value="{{ $status }}"
@@ -94,22 +121,33 @@
                             </h3>
 
                             <p>
-                                <span class="font-medium">NIM:</span>
+                                <span class="font-medium">
+                                    NIM:
+                                </span>
+
                                 {{ $alumni->nim ?: '-' }}
                             </p>
 
                             <p>
-                                <span class="font-medium">Program Studi:</span>
+                                <span class="font-medium">
+                                    Program Studi:
+                                </span>
+
                                 {{ $alumni->prodi ?: '-' }}
                             </p>
 
                             <p>
-                                <span class="font-medium">Tempat Bekerja:</span>
+                                <span class="font-medium">
+                                    Tempat Bekerja:
+                                </span>
+
                                 {{ $alumni->tempat_bekerja ?: '-' }}
                             </p>
 
                             <p>
-                                <span class="font-medium">Status:</span>
+                                <span class="font-medium">
+                                    Status:
+                                </span>
 
                                 <span class="inline-block px-3 py-1 rounded-full text-sm {{ $statusClass }}">
                                     {{ $alumni->status_verifikasi ?: \App\Models\Alumni::STATUS_BELUM_DILACAK }}

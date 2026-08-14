@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\ExportAlumniProject4;
 use App\Imports\AlumniImport;
+use App\Jobs\ExportAlumniProject4;
 use App\Models\Alumni;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -28,7 +29,13 @@ class AlumniController extends Controller
                         ->orWhere('tempat_bekerja', 'like', "%{$keyword}%");
                 });
             })
-            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status_verifikasi', $status))
+            ->when(
+                $filters['status'] ?? null,
+                fn ($query, string $status) => $query->where(
+                    'status_verifikasi',
+                    $status
+                )
+            )
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -57,8 +64,13 @@ class AlumniController extends Controller
     public function show(Alumni $alumni)
     {
         $alumni->load([
-            'hasilPelacakans' => fn ($query) => $query->with('user')->latest('tanggal_ditemukan')->latest('id'),
-            'queryPelacakans' => fn ($query) => $query->latest('generated_at')->orderBy('prioritas'),
+            'hasilPelacakans' => fn ($query) => $query
+                ->with('user')
+                ->latest('tanggal_ditemukan')
+                ->latest('id'),
+            'queryPelacakans' => fn ($query) => $query
+                ->latest('generated_at')
+                ->orderBy('prioritas'),
         ]);
 
         return view('alumni.show', compact('alumni'));
@@ -96,14 +108,27 @@ class AlumniController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'file_excel' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:51200'],
+            'file_excel' => [
+                'required',
+                'file',
+                'mimes:xlsx,xls,csv',
+                'max:51200',
+            ],
         ]);
 
         $path = $request->file('file_excel')->store('imports');
-        Excel::queueImport(new AlumniImport, $path, 'local');
+
+        Excel::queueImport(
+            new AlumniImport,
+            $path,
+            'local'
+        );
 
         return redirect()->route('alumni.index')
-            ->with('success', 'File berhasil diterima dan sedang diproses melalui antrean. Jalankan queue worker untuk menyelesaikan import.');
+            ->with(
+                'success',
+                'File berhasil diterima dan sedang diproses melalui antrean. Jalankan queue worker untuk menyelesaikan import.'
+            );
     }
 
     public function exportExcel()
@@ -111,39 +136,125 @@ class AlumniController extends Controller
         ExportAlumniProject4::dispatch();
 
         return redirect()->route('alumni.index')
-        ->with(
-            'success',
-            'Export Excel sedang diproses melalui antrean. Tunggu hingga proses selesai.'
+            ->with(
+                'success',
+                'Export Excel sedang diproses melalui antrean. Tunggu hingga proses selesai.'
+            );
+    }
+
+    public function downloadExport()
+    {
+        $filename = 'hasil-pelacakan-alumni-project4.xlsx';
+
+        if (! Storage::disk('s3')->exists($filename)) {
+            return redirect()->route('alumni.index')
+                ->withErrors([
+                    'export' => 'File hasil export belum tersedia. Jalankan Export Excel terlebih dahulu.',
+                ]);
+        }
+
+        return Storage::disk('s3')->download(
+            $filename,
+            $filename
         );
     }
 
-    private function validatedData(Request $request, ?Alumni $alumni = null): array
-    {
+    private function validatedData(
+        Request $request,
+        ?Alumni $alumni = null
+    ): array {
         $currentYear = (int) now()->format('Y');
 
         return $request->validate([
-            'nama' => ['required', 'string', 'max:255'],
+            'nama' => [
+                'required',
+                'string',
+                'max:255',
+            ],
             'nim' => [
                 'nullable',
                 'string',
                 'max:50',
                 Rule::unique('alumnis', 'nim')->ignore($alumni?->id),
             ],
-            'prodi' => ['nullable', 'string', 'max:150'],
-            'angkatan' => ['nullable', 'digits:4', 'integer', 'min:1900', 'max:'.($currentYear + 1)],
-            'tahun_lulus' => ['nullable', 'integer', 'min:1900', 'max:'.($currentYear + 1)],
-            'email' => ['nullable', 'email:rfc', 'max:255'],
-            'no_hp' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+()\-\s]+$/'],
-            'tempat_bekerja' => ['nullable', 'string', 'max:255'],
-            'alamat_bekerja' => ['nullable', 'string', 'max:1000'],
-            'posisi' => ['nullable', 'string', 'max:255'],
-            'kategori_pekerjaan' => ['nullable', Rule::in(Alumni::kategoriPekerjaanOptions())],
-            'linkedin' => ['nullable', 'url:http,https', 'max:2048'],
-            'instagram' => ['nullable', 'url:http,https', 'max:2048'],
-            'facebook' => ['nullable', 'url:http,https', 'max:2048'],
-            'tiktok' => ['nullable', 'url:http,https', 'max:2048'],
-            'sosmed_tempat_bekerja' => ['nullable', 'url:http,https', 'max:2048'],
-            'catatan' => ['nullable', 'string', 'max:2000'],
+            'prodi' => [
+                'nullable',
+                'string',
+                'max:150',
+            ],
+            'angkatan' => [
+                'nullable',
+                'digits:4',
+                'integer',
+                'min:1900',
+                'max:'.($currentYear + 1),
+            ],
+            'tahun_lulus' => [
+                'nullable',
+                'integer',
+                'min:1900',
+                'max:'.($currentYear + 1),
+            ],
+            'email' => [
+                'nullable',
+                'email:rfc',
+                'max:255',
+            ],
+            'no_hp' => [
+                'nullable',
+                'string',
+                'max:30',
+                'regex:/^[0-9+()\-\s]+$/',
+            ],
+            'tempat_bekerja' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'alamat_bekerja' => [
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+            'posisi' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'kategori_pekerjaan' => [
+                'nullable',
+                Rule::in(Alumni::kategoriPekerjaanOptions()),
+            ],
+            'linkedin' => [
+                'nullable',
+                'url:http,https',
+                'max:2048',
+            ],
+            'instagram' => [
+                'nullable',
+                'url:http,https',
+                'max:2048',
+            ],
+            'facebook' => [
+                'nullable',
+                'url:http,https',
+                'max:2048',
+            ],
+            'tiktok' => [
+                'nullable',
+                'url:http,https',
+                'max:2048',
+            ],
+            'sosmed_tempat_bekerja' => [
+                'nullable',
+                'url:http,https',
+                'max:2048',
+            ],
+            'catatan' => [
+                'nullable',
+                'string',
+                'max:2000',
+            ],
         ]);
     }
 }
