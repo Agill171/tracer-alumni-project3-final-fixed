@@ -3,6 +3,7 @@
 use App\Http\Controllers\AlumniController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HasilPelacakanController;
+use App\Http\Controllers\PelacakanBatchController;
 use App\Http\Controllers\PelacakanQueryController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -47,6 +48,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         [AlumniController::class, 'downloadExport']
     )->name('alumni.export.download');
 
+    Route::get(
+        'pelacakan-batches',
+        [PelacakanBatchController::class, 'index']
+    )->name('pelacakan-batches.index');
+
+    Route::post(
+        'pelacakan-batches',
+        [PelacakanBatchController::class, 'store']
+    )->name('pelacakan-batches.store');
+
     Route::post(
         'alumni/{alumni}/query-pelacakan',
         [PelacakanQueryController::class, 'store']
@@ -78,7 +89,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     )->name('pelacakan.destroy');
 
     Route::resource('alumni', AlumniController::class)
-        ->parameters(['alumni' => 'alumni']);
+        ->parameters([
+            'alumni' => 'alumni',
+        ]);
 });
 
 require __DIR__.'/auth.php';
