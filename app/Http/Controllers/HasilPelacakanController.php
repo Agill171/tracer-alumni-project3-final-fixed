@@ -9,12 +9,15 @@ use Illuminate\Validation\Rule;
 
 class HasilPelacakanController extends Controller
 {
-    public function create(Alumni $alumni)
+    public function create(Request $request, Alumni $alumni)
     {
-        return view('pelacakan.create', [
-            'alumni' => $alumni,
-            'statusOptions' => Alumni::statusOptions(),
-        ]);
+    return view('pelacakan.create', [
+        'alumni' => $alumni,
+        'statusOptions' => Alumni::statusOptions(),
+        'queryPencarian' => $request->query('query'),
+        'sumberPencarian' => $request->query('source'),
+    ]);
+
     }
 
     public function store(Request $request, Alumni $alumni)
