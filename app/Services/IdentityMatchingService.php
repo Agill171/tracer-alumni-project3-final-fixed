@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Alumni;
 use App\Models\HasilPelacakan;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log; // <-- Tambahan untuk Debug
 
 class IdentityMatchingService
 {
@@ -18,12 +19,29 @@ class IdentityMatchingService
                 ?? ''
             );
 
-        // Ambil raw_content yang sudah diaktifkan di TavilySearchProvider
+        /*
+         * PERUBAHAN PENTING:
+         * Gabungkan raw_content (full page) dan snippet (cuplikan Google)
+         * agar Regex punya lebih banyak teks untuk mencari Email/No HP.
+         */
         $rawContent =
             (string) (
                 $result['raw_content']
                 ?? ''
+            )
+            . ' '
+            . (string) (
+                $result['snippet']
+                ?? ''
             );
+
+
+        /*
+         * TAMBAHAN DEBUG SEMENTARA:
+         * Cek di Logs Worker (cari tulisan "RAW CONTENT DEBUG").
+         * Hapus 3 baris di bawah ini setelah selesai testing!
+         */
+        Log::info('RAW CONTENT DEBUG: ' . substr($rawContent, 0, 500));
 
         $text =
             collect([
@@ -158,7 +176,7 @@ class IdentityMatchingService
 
         $project4FromContent =
             $this->detectProject4FromContent(
-                $rawContent
+                $rawContent // <-- Sekarang mengirim gabungan raw + snippet
             );
 
         $project4 =
