@@ -11,185 +11,545 @@ class PelacakanQueryService
 {
     public function availableSources(): array
     {
-        return config('tracer.sources', []);
+        return config(
+            'tracer.sources',
+            []
+        );
     }
 
-    /**
-     * Query dasar alumni.
-     */
-    public function buildBaseQuery(Alumni $alumni): string
-    {
-        return collect([
+    /*
+    |--------------------------------------------------------------------------
+    | QUERY DASAR
+    |--------------------------------------------------------------------------
+    |
+    | Prioritas identitas:
+    |
+    | 1. Nama
+    | 2. NIM
+    | 3. Program Studi
+    | 4. Fakultas jika tersedia
+    | 5. Universitas Muhammadiyah Malang
+    |
+    */
+
+    public function buildBaseQuery(
+        Alumni $alumni
+    ): string {
+        return $this->joinQueryParts([
             $this->quote($alumni->nama),
-            $this->quote(config('tracer.campus')),
-            $alumni->prodi,
-        ])
-            ->filter(fn ($value) => filled($value))
-            ->implode(' ');
+            $this->quote($alumni->prodi),
+            $this->quote(
+                $alumni->getAttribute('fakultas')
+            ),
+            $this->quote(
+                config('tracer.campus')
+            ),
+        ]);
     }
 
-    /**
-     * Membuat beberapa variasi query berdasarkan sumber.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | GENERATE VARIASI QUERY
+    |--------------------------------------------------------------------------
+    */
+
     private function buildQueries(
         Alumni $alumni,
         string $sourceKey,
         array $source
     ): array {
-        $name = $this->quote($alumni->nama);
-        $campus = $this->quote(config('tracer.campus'));
-        $prodi = $this->quote($alumni->prodi);
-        $tahunLulus = $alumni->tahun_lulus;
-        $tempatKerja = $this->quote($alumni->tempat_bekerja);
+        $nama = $this->quote(
+            $alumni->nama
+        );
 
-        $prefix = trim($source['prefix'] ?? '');
+        $nim = $this->quote(
+            $alumni->nim
+        );
 
-        $queries = match ($sourceKey) {
+        $prodi = $this->quote(
+            $alumni->prodi
+        );
 
-            /*
-             * Pencarian umum.
-             */
-            'google' => [
-                "{$name} {$campus}",
-                "{$name} {$prodi}",
-                "{$name} {$campus} {$prodi}",
-            ],
+        $fakultas = $this->quote(
+            $alumni->getAttribute(
+                'fakultas'
+            )
+        );
 
-            /*
-             * Profil profesional.
-             */
-            'linkedin' => [
-                "{$prefix} {$name}",
-                "{$prefix} {$name} {$campus}",
-                "{$prefix} {$name} {$prodi}",
-            ],
+        $kampus = $this->quote(
+            config('tracer.campus')
+        );
 
-            /*
-             * Pencarian pekerjaan/perusahaan.
-             */
-            'company_web' => [
-                "{$name} {$campus} kerja",
-                "{$name} {$prodi} kerja",
-                "{$name} perusahaan",
-                "{$name} karyawan",
-            ],
+        $tahunLulus = filled(
+            $alumni->tahun_lulus
+        )
+            ? (string) $alumni->tahun_lulus
+            : '';
 
-            /*
-             * Media sosial.
-             */
-            'instagram' => [
-                "{$prefix} {$name}",
-                "{$prefix} {$name} {$campus}",
-            ],
+        $tempatKerja = $this->quote(
+            $alumni->tempat_bekerja
+        );
 
-            'facebook' => [
-                "{$prefix} {$name}",
-                "{$prefix} {$name} {$campus}",
-            ],
+        $prefix = trim(
+            $source['prefix'] ?? ''
+        );
 
-            'tiktok' => [
-                "{$prefix} {$name}",
-                "{$prefix} {$name} {$campus}",
-            ],
-
-            /*
-             * Sumber akademik/profesional tambahan.
-             */
-            'github' => [
-                "{$name}",
-                "{$name} {$prodi}",
-            ],
-
-            'google_scholar' => [
-                "{$name}",
-                "{$name} {$campus}",
-            ],
-
-            'researchgate' => [
-                "{$prefix} {$name}",
-                "{$prefix} {$name} {$campus}",
-            ],
-
-            'orcid' => [
-                "{$name}",
-            ],
-
-            default => [
-                trim("{$prefix} ".$this->buildBaseQuery($alumni)),
-            ],
-        };
 
         /*
-         * Bila tahun lulus tersedia,
-         * tambahkan variasi query dengan tahun.
-         */
-        if (
-            filled($tahunLulus) &&
-            in_array(
-                $sourceKey,
-                ['google', 'linkedin', 'company_web'],
-                true
-            )
-        ) {
-            $queries[] = trim(
-                "{$prefix} {$name} {$campus} {$tahunLulus}"
+        |--------------------------------------------------------------------------
+        | GOOGLE WEB
+        |--------------------------------------------------------------------------
+        |
+        | Query dibuat dari yang paling kuat terlebih dahulu.
+        |
+        */
+
+        if ($sourceKey === 'google') {
+            $queries = [
+
+                /*
+                 * Paling kuat apabila NIM pernah dipublikasikan.
+                 */
+                $this->joinQueryParts([
+                    $nama,
+                    $nim,
+                ]),
+
+                /*
+                 * Nama + identitas akademik lengkap.
+                 */
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                    $fakultas,
+                    $kampus,
+                ]),
+
+                /*
+                 * Nama + Prodi + Kampus.
+                 */
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                    $kampus,
+                ]),
+
+                /*
+                 * Nama + Kampus.
+                 */
+                $this->joinQueryParts([
+                    $nama,
+                    $kampus,
+                ]),
+
+                /*
+                 * NIM + Kampus.
+                 */
+                $this->joinQueryParts([
+                    $nim,
+                    $kampus,
+                ]),
+
+                /*
+                 * Nama + Prodi.
+                 */
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                ]),
+            ];
+
+
+            /*
+             * Tambahkan tahun lulus sebagai pembeda
+             * jika tersedia.
+             */
+            if ($tahunLulus !== '') {
+                $queries[] =
+                    $this->joinQueryParts([
+                        $nama,
+                        $prodi,
+                        $kampus,
+                        $tahunLulus,
+                    ]);
+            }
+
+
+            /*
+             * Query khusus untuk mencari email.
+             */
+            $queries[] =
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                    $kampus,
+                    'email',
+                ]);
+
+
+            /*
+             * Query khusus pekerjaan.
+             */
+            $queries[] =
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                    $kampus,
+                    'kerja',
+                ]);
+
+            $queries[] =
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                    'perusahaan',
+                ]);
+
+            return $this->cleanQueries(
+                $queries
             );
         }
 
+
         /*
-         * Bila tempat kerja sudah diketahui dari proses sebelumnya,
-         * gunakan juga sebagai verifikasi silang.
-         */
-        if (
-            filled($alumni->tempat_bekerja) &&
-            in_array(
-                $sourceKey,
-                ['google', 'linkedin', 'company_web'],
-                true
-            )
-        ) {
-            $queries[] = trim(
-                "{$prefix} {$name} {$tempatKerja}"
+        |--------------------------------------------------------------------------
+        | LINKEDIN
+        |--------------------------------------------------------------------------
+        |
+        | Jangan terlalu longgar.
+        |
+        | Nama tetap exact phrase agar Google tidak
+        | membawa kita terlalu jauh ke orang lain.
+        |
+        */
+
+        if ($sourceKey === 'linkedin') {
+            $queries = [
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $kampus,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $prodi,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                ]),
+            ];
+
+            if ($tahunLulus !== '') {
+                $queries[] =
+                    $this->joinQueryParts([
+                        $prefix,
+                        $nama,
+                        $kampus,
+                        $tahunLulus,
+                    ]);
+            }
+
+            return $this->cleanQueries(
+                $queries
             );
         }
 
-        return collect($queries)
-            ->map(fn ($query) => trim($query))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+
+        /*
+        |--------------------------------------------------------------------------
+        | WEBSITE / TEMPAT KERJA
+        |--------------------------------------------------------------------------
+        */
+
+        if ($sourceKey === 'company_web') {
+            $queries = [
+
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                    $kampus,
+                    'kerja',
+                ]),
+
+                $this->joinQueryParts([
+                    $nama,
+                    $kampus,
+                    'karyawan',
+                ]),
+
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                    'perusahaan',
+                ]),
+
+                $this->joinQueryParts([
+                    $nama,
+                    'pegawai',
+                ]),
+
+                $this->joinQueryParts([
+                    $nama,
+                    'staff',
+                ]),
+            ];
+
+            if (
+                filled(
+                    $alumni->tempat_bekerja
+                )
+            ) {
+                $queries[] =
+                    $this->joinQueryParts([
+                        $nama,
+                        $tempatKerja,
+                    ]);
+            }
+
+            return $this->cleanQueries(
+                $queries
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | INSTAGRAM
+        |--------------------------------------------------------------------------
+        */
+
+        if ($sourceKey === 'instagram') {
+            return $this->cleanQueries([
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $kampus,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $prodi,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                ]),
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | FACEBOOK
+        |--------------------------------------------------------------------------
+        */
+
+        if ($sourceKey === 'facebook') {
+            return $this->cleanQueries([
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $kampus,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $prodi,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                ]),
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | TIKTOK
+        |--------------------------------------------------------------------------
+        */
+
+        if ($sourceKey === 'tiktok') {
+            return $this->cleanQueries([
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $kampus,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $prodi,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                ]),
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | GITHUB
+        |--------------------------------------------------------------------------
+        */
+
+        if ($sourceKey === 'github') {
+            return $this->cleanQueries([
+                $alumni->nama,
+
+                $this->joinQueryParts([
+                    $alumni->nama,
+                    $alumni->prodi,
+                ]),
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | GOOGLE SCHOLAR
+        |--------------------------------------------------------------------------
+        */
+
+        if ($sourceKey === 'google_scholar') {
+            return $this->cleanQueries([
+                $nama,
+
+                $this->joinQueryParts([
+                    $nama,
+                    $kampus,
+                ]),
+
+                $this->joinQueryParts([
+                    $nama,
+                    $prodi,
+                    $kampus,
+                ]),
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | RESEARCHGATE
+        |--------------------------------------------------------------------------
+        */
+
+        if ($sourceKey === 'researchgate') {
+            return $this->cleanQueries([
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                ]),
+
+                $this->joinQueryParts([
+                    $prefix,
+                    $nama,
+                    $kampus,
+                ]),
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | ORCID
+        |--------------------------------------------------------------------------
+        */
+
+        if ($sourceKey === 'orcid') {
+            return $this->cleanQueries([
+                $nama,
+
+                $this->joinQueryParts([
+                    $nama,
+                    $kampus,
+                ]),
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | DEFAULT
+        |--------------------------------------------------------------------------
+        */
+
+        return $this->cleanQueries([
+            $this->joinQueryParts([
+                $prefix,
+                $this->buildBaseQuery(
+                    $alumni
+                ),
+            ]),
+        ]);
     }
 
-    /**
-     * Generate dan simpan query pelacakan.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | GENERATE DAN SIMPAN
+    |--------------------------------------------------------------------------
+    */
+
     public function generate(
         Alumni $alumni,
         array $sourceKeys = [],
         ?int $userId = null
     ): Collection {
-        $sources = collect($this->availableSources());
+        $sources = collect(
+            $this->availableSources()
+        );
 
         if ($sourceKeys !== []) {
-            $sources = $sources->filter(
-                fn (array $source, string $key) =>
-                    in_array($key, $sourceKeys, true)
-            );
+            $sources =
+                $sources->filter(
+                    fn (
+                        array $source,
+                        string $key
+                    ) =>
+                        in_array(
+                            $key,
+                            $sourceKeys,
+                            true
+                        )
+                );
         }
 
         $generated = collect();
 
-        foreach ($sources as $key => $source) {
-            $queries = $this->buildQueries(
-                $alumni,
-                $key,
-                $source
-            );
+        foreach (
+            $sources
+            as $key => $source
+        ) {
+            $queries =
+                $this->buildQueries(
+                    $alumni,
+                    $key,
+                    $source
+                );
 
-            foreach ($queries as $query) {
-
-                $encodedQuery = rawurlencode($query);
+            foreach (
+                $queries
+                as $query
+            ) {
+                $encodedQuery =
+                    rawurlencode(
+                        $query
+                    );
 
                 $url = str_replace(
                     '{query}',
@@ -202,39 +562,74 @@ class PelacakanQueryService
                     $key.'|'.$query
                 );
 
-                $record = PelacakanQuery::updateOrCreate(
-                    [
-                        'alumni_id' => $alumni->id,
-                        'sumber' => $key,
-                        'query_hash' => $hash,
-                    ],
-                    [
-                        'user_id' => $userId,
-                        'prioritas' => $source['priority'] ?? 99,
-                        'query' => $query,
-                        'url_pencarian' => $url,
-                        'status' => 'Disiapkan',
-                        'generated_at' => now(),
-                    ]
-                );
+                $record =
+                    PelacakanQuery::firstOrNew([
+                        'alumni_id' =>
+                            $alumni->id,
 
-                $generated->push($record);
+                        'sumber' =>
+                            $key,
+
+                        'query_hash' =>
+                            $hash,
+                    ]);
+
+                $record->user_id =
+                    $userId;
+
+                $record->prioritas =
+                    $source['priority'] ?? 99;
+
+                $record->query =
+                    $query;
+
+                $record->url_pencarian =
+                    $url;
+
+                if (
+                    ! $record->exists
+                    || blank(
+                        $record->status
+                    )
+                ) {
+                    $record->status =
+                        'Disiapkan';
+                }
+
+                $record->generated_at =
+                    now();
+
+                $record->save();
+
+                $generated->push(
+                    $record
+                );
             }
         }
 
         return $generated
             ->sortBy([
-                ['prioritas', 'asc'],
-                ['id', 'asc'],
+                [
+                    'prioritas',
+                    'asc',
+                ],
+                [
+                    'id',
+                    'asc',
+                ],
             ])
             ->values();
     }
 
-    /**
-     * Label sumber.
-     */
-    public function sourceLabel(string $key): string
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | LABEL SUMBER
+    |--------------------------------------------------------------------------
+    */
+
+    public function sourceLabel(
+        string $key
+    ): string {
         return data_get(
             $this->availableSources(),
             $key.'.label',
@@ -242,17 +637,71 @@ class PelacakanQueryService
         );
     }
 
-    /**
-     * Membungkus teks dengan tanda kutip
-     * untuk pencarian exact phrase.
-     */
-    private function quote(?string $value): string
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | CLEAN QUERY
+    |--------------------------------------------------------------------------
+    */
+
+    private function cleanQueries(
+        array $queries
+    ): array {
+        return collect($queries)
+            ->map(
+                fn ($query) =>
+                    preg_replace(
+                        '/\s+/u',
+                        ' ',
+                        trim(
+                            (string) $query
+                        )
+                    )
+            )
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | JOIN PARTS
+    |--------------------------------------------------------------------------
+    */
+
+    private function joinQueryParts(
+        array $parts
+    ): string {
+        return collect($parts)
+            ->filter(
+                fn ($value) =>
+                    filled($value)
+            )
+            ->map(
+                fn ($value) =>
+                    trim(
+                        (string) $value
+                    )
+            )
+            ->implode(' ');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | EXACT PHRASE
+    |--------------------------------------------------------------------------
+    */
+
+    private function quote(
+        mixed $value
+    ): string {
         if (blank($value)) {
             return '';
         }
 
-        $value = trim($value);
+        $value = trim(
+            (string) $value
+        );
 
         $value = str_replace(
             '"',

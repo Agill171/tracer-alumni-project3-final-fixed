@@ -5,12 +5,15 @@ namespace App\Jobs;
 use App\Models\PelacakanBatch;
 use App\Models\PelacakanBatchItem;
 use App\Services\PelacakanQueryService;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use RuntimeException;
 use Throwable;
 
-class ProcessPelacakanBatchItem implements ShouldQueue
+class ProcessPelacakanBatchItem implements
+    ShouldQueue,
+    ShouldBeUnique
 {
     use Queueable;
 
@@ -20,25 +23,43 @@ class ProcessPelacakanBatchItem implements ShouldQueue
 
     public $failOnTimeout = true;
 
+    public int $uniqueFor = 600;
+
     public function __construct(
         public int $batchItemId
     ) {
         //
     }
 
+    public function uniqueId(): string
+    {
+        return (string) $this->batchItemId;
+    }
+
+    public function backoff(): array
+    {
+        return [
+            5,
+            15,
+            30,
+        ];
+    }
+
     public function handle(
         PelacakanQueryService $queryService
     ): void {
-        $item = PelacakanBatchItem::query()
-            ->with([
-                'batch',
-                'alumni',
-            ])
-            ->findOrFail($this->batchItemId);
+        $item =
+            PelacakanBatchItem::query()
+                ->with([
+                    'batch',
+                    'alumni',
+                ])
+                ->findOrFail(
+                    $this->batchItemId
+                );
 
         /*
-         * Query sudah pernah berhasil disiapkan.
-         * Jangan membuat ulang query pada retry/job duplikat.
+         * Idempotent.
          */
         if (
             in_array(
@@ -63,36 +84,63 @@ class ProcessPelacakanBatchItem implements ShouldQueue
         }
 
         $item->update([
-            'status' => PelacakanBatchItem::STATUS_DIPROSES,
-            'attempts' => $item->attempts + 1,
-            'last_error' => null,
+            'status' =>
+                PelacakanBatchItem::STATUS_DIPROSES,
+
+            'attempts' =>
+                ((int) $item->attempts) + 1,
+
+            'last_error' =>
+                null,
         ]);
 
         if (
-            $batch->status === PelacakanBatch::STATUS_DISIAPKAN
+            $batch->status
+            === PelacakanBatch::STATUS_DISIAPKAN
         ) {
             $batch->update([
-                'status' => PelacakanBatch::STATUS_DIPROSES,
-                'started_at' => $batch->started_at ?? now(),
+                'status' =>
+                    PelacakanBatch::STATUS_DIPROSES,
+
+                'started_at' =>
+                    $batch->started_at ?? now(),
             ]);
         }
 
         /*
-         * Tahap pertama pipeline:
-         * hanya menghasilkan query dan URL pencarian.
-         *
-         * Alumni BELUM dianggap selesai dilacak.
-         */
-        $queryService->generate(
-            $alumni,
-            $batch->sources ?? [],
-            $batch->user_id
-        );
+        |--------------------------------------------------------------------------
+        | TAHAP QUERY PREPARATION
+        |--------------------------------------------------------------------------
+        |
+        | Ini BELUM melakukan klaim bahwa data ditemukan.
+        |
+        | Hanya menyiapkan query dan URL pencarian untuk
+        | verifikasi dari sumber publik.
+        |
+        */
+
+        $generated =
+            $queryService->generate(
+                $alumni,
+                $batch->sources ?? [],
+                $batch->user_id
+            );
+
+        if ($generated->isEmpty()) {
+            throw new RuntimeException(
+                'Tidak ada query pencarian yang berhasil dibuat.'
+            );
+        }
 
         $item->update([
-            'status' => PelacakanBatchItem::STATUS_QUERY_SIAP,
-            'processed_at' => now(),
-            'last_error' => null,
+            'status' =>
+                PelacakanBatchItem::STATUS_QUERY_SIAP,
+
+            'processed_at' =>
+                now(),
+
+            'last_error' =>
+                null,
         ]);
 
         $this->syncBatchProgress(
@@ -103,18 +151,24 @@ class ProcessPelacakanBatchItem implements ShouldQueue
     public function failed(
         ?Throwable $exception
     ): void {
-        $item = PelacakanBatchItem::find(
-            $this->batchItemId
-        );
+        $item =
+            PelacakanBatchItem::find(
+                $this->batchItemId
+            );
 
         if (! $item) {
             return;
         }
 
         $item->update([
-            'status' => PelacakanBatchItem::STATUS_GAGAL,
-            'last_error' => $exception?->getMessage(),
-            'processed_at' => now(),
+            'status' =>
+                PelacakanBatchItem::STATUS_GAGAL,
+
+            'last_error' =>
+                $exception?->getMessage(),
+
+            'processed_at' =>
+                now(),
         ]);
 
         $this->syncBatchProgress(
@@ -133,67 +187,77 @@ class ProcessPelacakanBatchItem implements ShouldQueue
             return;
         }
 
-        /*
-         * Untuk tahap ini success_items berarti:
-         * jumlah alumni yang query pencariannya sudah siap.
-         */
-        $queryReadyItems = PelacakanBatchItem::query()
-            ->where(
-                'pelacakan_batch_id',
-                $batchId
-            )
-            ->whereIn(
-                'status',
-                [
-                    PelacakanBatchItem::STATUS_QUERY_SIAP,
-                    PelacakanBatchItem::STATUS_SELESAI,
-                ]
-            )
-            ->count();
+        $queryReadyItems =
+            PelacakanBatchItem::query()
+                ->where(
+                    'pelacakan_batch_id',
+                    $batchId
+                )
+                ->whereIn(
+                    'status',
+                    [
+                        PelacakanBatchItem::STATUS_QUERY_SIAP,
+                        PelacakanBatchItem::STATUS_SELESAI,
+                    ]
+                )
+                ->count();
 
-        $failedItems = PelacakanBatchItem::query()
-            ->where(
-                'pelacakan_batch_id',
-                $batchId
-            )
-            ->where(
-                'status',
-                PelacakanBatchItem::STATUS_GAGAL
-            )
-            ->count();
+        $failedItems =
+            PelacakanBatchItem::query()
+                ->where(
+                    'pelacakan_batch_id',
+                    $batchId
+                )
+                ->where(
+                    'status',
+                    PelacakanBatchItem::STATUS_GAGAL
+                )
+                ->count();
 
-        $processedItems = $queryReadyItems
+        $processedItems =
+            $queryReadyItems
             + $failedItems;
 
-        $isPreparationFinished = (
+        $isFinished =
             $batch->total_items > 0
-            && $processedItems >= $batch->total_items
-        );
+            && $processedItems
+                >= $batch->total_items;
 
         if (
-            $isPreparationFinished
+            $isFinished
             && $queryReadyItems === 0
         ) {
-            $status = PelacakanBatch::STATUS_GAGAL;
-        } elseif ($isPreparationFinished) {
-            $status = PelacakanBatch::STATUS_QUERY_SIAP;
+            $status =
+                PelacakanBatch::STATUS_GAGAL;
+        } elseif ($isFinished) {
+            $status =
+                PelacakanBatch::STATUS_QUERY_SIAP;
         } else {
-            $status = PelacakanBatch::STATUS_DIPROSES;
+            $status =
+                PelacakanBatch::STATUS_DIPROSES;
         }
 
         $batch->update([
-            'processed_items' => $processedItems,
-            'success_items' => $queryReadyItems,
-            'failed_items' => $failedItems,
-            'status' => $status,
+            'processed_items' =>
+                $processedItems,
+
+            'success_items' =>
+                $queryReadyItems,
+
+            'failed_items' =>
+                $failedItems,
+
+            'status' =>
+                $status,
 
             /*
-             * finished_at hanya dipakai ketika seluruh pipeline
-             * Project 4 benar-benar selesai atau batch gagal total.
+             * Query Siap belum berarti seluruh Project 4 selesai.
              */
-            'finished_at' => $status === PelacakanBatch::STATUS_GAGAL
-                ? now()
-                : null,
+            'finished_at' =>
+                $status
+                    === PelacakanBatch::STATUS_GAGAL
+                        ? now()
+                        : null,
         ]);
     }
 }

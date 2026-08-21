@@ -13,7 +13,8 @@ use RuntimeException;
 class PelacakanBatchController extends Controller
 {
     public function index(
-        PelacakanQueryService $queryService
+        PelacakanQueryService $queryService,
+        PelacakanBatchService $batchService
     ) {
         $batches = PelacakanBatch::query()
             ->with('user')
@@ -22,6 +23,48 @@ class PelacakanBatchController extends Controller
 
         return view('pelacakan-batches.index', [
             'batches' => $batches,
+
+            'sources' =>
+                $queryService->availableSources(),
+
+            'totalTanpaDataProject4' =>
+                $batchService->countWithoutAnyProject4(),
+
+            'totalTersediaBatch' =>
+                $batchService->countAvailableForBatch(),
+        ]);
+    }
+
+    public function show(
+        PelacakanBatch $batch,
+        PelacakanQueryService $queryService
+    ) {
+        $batch->load('user');
+
+        $items = $batch->items()
+            ->with([
+                'alumni' => function ($query) {
+                    $query->with([
+                        'queryPelacakans' => function ($queryPelacakan) {
+                            $queryPelacakan
+                                ->orderBy('prioritas')
+                                ->orderBy('id');
+                        },
+
+                        'hasilPelacakans' => function ($hasilPelacakan) {
+                            $hasilPelacakan
+                                ->latest('tanggal_ditemukan')
+                                ->latest('id');
+                        },
+                    ]);
+                },
+            ])
+            ->orderBy('id')
+            ->paginate(25);
+
+        return view('pelacakan-batches.show', [
+            'batch' => $batch,
+            'items' => $items,
             'sources' => $queryService->availableSources(),
         ]);
     }
@@ -41,17 +84,20 @@ class PelacakanBatchController extends Controller
                 'string',
                 'max:150',
             ],
+
             'limit' => [
                 'required',
                 'integer',
                 'min:1',
                 'max:1000',
             ],
+
             'sources' => [
                 'required',
                 'array',
                 'min:1',
             ],
+
             'sources.*' => [
                 'string',
                 Rule::in($sourceKeys),
@@ -79,11 +125,14 @@ class PelacakanBatchController extends Controller
         }
 
         return redirect()
-            ->route('pelacakan-batches.index')
+            ->route(
+                'pelacakan-batches.show',
+                $batch
+            )
             ->with(
                 'success',
                 "Batch {$batch->nama_batch} berhasil dibuat. "
-                ."Sebanyak {$batch->total_items} alumni masuk antrean."
+                ."Sebanyak {$batch->total_items} alumni masuk antrean penyiapan query."
             );
     }
 }
