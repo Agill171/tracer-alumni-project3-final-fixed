@@ -110,23 +110,49 @@
 
 
     {{-- ========================================================= --}}
-    {{-- WORKFLOW --}}
+    {{-- WORKFLOW (MANUAL & AUTO ENRICHMENT) --}}
     {{-- ========================================================= --}}
 
-    <div class="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+    @php
+        // Cek apakah ada hasil dari Auto Enrichment (AI)
+        $autoResults = $alumni->hasilPelacakans->filter(fn($p) => filled($p->automation_key));
+        $autoCount = $autoResults->count();
+        $latestAuto = $autoResults->first();
+        
+        // Ambil item batch terkait untuk tombol review
+        $batchItem = \App\Models\PelacakanBatchItem::where('alumni_id', $alumni->id)
+            ->where('pelacakan_batch_id', request('from_batch'))
+            ->first();
+    @endphp
 
+    <div class="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-5">
         <h3 class="font-semibold text-blue-900">
-            Workflow Verifikasi Evidence
+            Workflow Pelacakan Alumni (Manual & Otomatis)
         </h3>
+        
+        @if($autoCount > 0)
+            <p class="text-sm text-blue-800 mt-2">
+                <strong>Status Auto Enrichment (AI):</strong> 
+                <span class="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">
+                    {{ $latestAuto->status_pelacakan }}
+                </span>
+                (Skor: {{ $latestAuto->confidence_score ?? '-' }}%)
+            </p>
+
+            @if($latestAuto->status_pelacakan === \App\Models\Alumni::STATUS_PERLU_VERIFIKASI && $batchItem)
+                <a href="{{ route('pelacakan-batches.enrichment.review', $batchItem->id) }}" class="inline-flex mt-3 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold">
+                    🔍 Periksa Kandidat AI di Batch
+                </a>
+            @endif
+        @else
+            <p class="text-sm text-blue-800 mt-2">
+                Alumni ini belum diproses oleh Auto Enrichment (AI). Silakan jalankan dari menu <strong>Detail Batch</strong>.
+            </p>
+        @endif
 
         <p class="text-sm text-blue-800 mt-2">
-            Periksa evidence hasil pencarian, cocokkan nama, NIM,
-            kampus/prodi, timeline, dan bidang. Kandidat yang belum kuat
-            harus diverifikasi manual. False positive ditolak tanpa
-            menghapus jejak evidence. Data Project 4 hanya diisi dari
-            evidence yang benar.
+            Untuk verifikasi manual, periksa evidence hasil pencarian, cocokkan nama, NIM, kampus/prodi, timeline, dan bidang. Kandidat yang belum kuat harus diverifikasi manual. False positive ditolak tanpa menghapus jejak evidence. Data Project 4 hanya diisi dari evidence yang benar.
         </p>
-
     </div>
 
 
@@ -997,7 +1023,6 @@
                 {{-- ================================================= --}}
                 {{-- ACTION FINAL --}}
                 {{-- ================================================= --}}
-                {{-- Tombol berada DI LUAR FORM agar selalu terlihat. --}}
 
                 <div
                     class="mt-5"
