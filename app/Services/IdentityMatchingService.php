@@ -18,6 +18,13 @@ class IdentityMatchingService
                 ?? ''
             );
 
+        // Ambil raw_content yang sudah diaktifkan di TavilySearchProvider
+        $rawContent =
+            (string) (
+                $result['raw_content']
+                ?? ''
+            );
+
         $text =
             collect([
                 $result['title']
@@ -139,9 +146,25 @@ class IdentityMatchingService
             + ($bidangMatch ? 15 : 0);
 
 
-        $project4 =
+        /*
+         * PERUBAHAN PENTING:
+         * Menggabungkan hasil deteksi Project 4 dari URL
+         * dan dari Raw Content (untuk mencari Email, No HP, Tempat Kerja).
+         */
+        $project4FromUrl =
             $this->detectProject4(
                 $url
+            );
+
+        $project4FromContent =
+            $this->detectProject4FromContent(
+                $rawContent
+            );
+
+        $project4 =
+            array_merge(
+                $project4FromUrl,
+                $project4FromContent
             );
 
 
@@ -168,6 +191,83 @@ class IdentityMatchingService
                     $url
                 ),
         ];
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | EKSTRAKSI PROJECT 4 DARI RAW CONTENT (EMAIL, NO HP, DLL)
+    |--------------------------------------------------------------------------
+    |
+    | Fungsi ini mencari data kontak langsung dari isi halaman web
+    | yang ditemukan oleh Tavily.
+    |
+    */
+
+    private function detectProject4FromContent(
+        ?string $content
+    ): array {
+        if (
+            blank(
+                $content
+            )
+        ) {
+            return [];
+        }
+
+
+        $project4 = [];
+
+
+        /*
+         * 1. Ekstrak Email
+         */
+        if (
+            preg_match(
+                '/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/',
+                $content,
+                $matches
+            )
+        ) {
+            $project4['email'] =
+                $matches[0];
+        }
+
+
+        /*
+         * 2. Ekstrak No HP (Format Indonesia)
+         */
+        if (
+            preg_match(
+                '/(?:\+62|62|08)[0-9]{8,13}/',
+                $content,
+                $matches
+            )
+        ) {
+            $project4['no_hp'] =
+                $matches[0];
+        }
+
+
+        /*
+         * 3. Ekstrak Tempat Bekerja (Heuristik Sederhana)
+         * Mencari pola "Bekerja di X", "Working at X", atau "at X"
+         */
+        if (
+            preg_match(
+                '/(?:Bekerja di|Working at|Currently at|at)\s+([A-Z][A-Za-z0-9&.\- ]{2,50})/',
+                $content,
+                $matches
+            )
+        ) {
+            $project4['tempat_bekerja'] =
+                trim(
+                    $matches[1]
+                );
+        }
+
+
+        return $project4;
     }
 
 
@@ -310,7 +410,6 @@ class IdentityMatchingService
         ) {
             return false;
         }
-
 
         return str_contains(
             $normalizedHaystack,

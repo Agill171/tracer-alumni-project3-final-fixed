@@ -66,59 +66,34 @@ class TavilySearchProvider implements SearchProvider
                 ->post(
                     $endpoint,
                     [
-                        /*
-                         * Query pelacakan alumni.
-                         */
                         'query' =>
                             $query,
 
-
-                        /*
-                         * Basic = 1 credit/request.
-                         */
                         'search_depth' =>
                             'basic',
 
-
-                        /*
-                         * Maksimal 20 menurut API Tavily.
-                         */
                         'max_results' =>
                             $count,
 
-
-                        /*
-                         * Pencarian umum, bukan news.
-                         */
                         'topic' =>
                             'general',
 
-
-                        /*
-                         * Kita tidak membutuhkan jawaban LLM.
-                         */
                         'include_answer' =>
                             false,
 
-
                         /*
-                         * Jangan ambil full HTML.
+                         * PERUBAHAN PENTING:
+                         * Kita mengaktifkan raw_content agar Tavily
+                         * membuka URL dan mengambil isi halaman.
+                         * Ini sangat penting untuk mengekstrak Email & No HP
+                         * guna meningkatkan Completeness Project 4.
                          */
                         'include_raw_content' =>
-                            false,
+                            true,
 
-
-                        /*
-                         * Tidak butuh image.
-                         */
                         'include_images' =>
                             false,
 
-
-                        /*
-                         * Jangan biarkan Tavily mengubah
-                         * parameter otomatis.
-                         */
                         'auto_parameters' =>
                             false,
                     ]
@@ -201,6 +176,19 @@ class TavilySearchProvider implements SearchProvider
                 );
 
 
+            /*
+             * PERUBAHAN PENTING:
+             * Mengambil raw_content dari hasil Tavily
+             * dan meneruskannya ke IdentityMatchingService.
+             */
+            $rawContent =
+                (string) data_get(
+                    $row,
+                    'raw_content',
+                    ''
+                );
+
+
             $results[] = [
                 'rank' =>
                     $index + 1,
@@ -216,6 +204,14 @@ class TavilySearchProvider implements SearchProvider
                 'snippet' =>
                     $snippet !== ''
                         ? $snippet
+                        : null,
+
+                /*
+                 * Field baru untuk ekstraksi data.
+                 */
+                'raw_content' =>
+                    $rawContent !== ''
+                        ? $rawContent
                         : null,
             ];
         }
