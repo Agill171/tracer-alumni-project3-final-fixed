@@ -19,12 +19,13 @@ return [
     |--------------------------------------------------------------------------
     | SEARCH PROVIDER
     |--------------------------------------------------------------------------
+    | Pilih 'grok' untuk menggunakan AI, atau 'tavily' untuk pencarian biasa.
     */
 
     'provider' =>
         env(
             'AUTO_ENRICHMENT_PROVIDER',
-            'tavily'
+            'grok'
         ),
 
 
@@ -32,13 +33,6 @@ return [
     |--------------------------------------------------------------------------
     | STORAGE SAFETY
     |--------------------------------------------------------------------------
-    |
-    | Untuk sekarang false.
-    |
-    | Provider dapat diuji secara transient,
-    | tetapi pipeline yang menyimpan search-result
-    | ke pelacakan_kandidats belum kita aktifkan.
-    |
     */
 
     'storage_allowed' =>
@@ -57,7 +51,7 @@ return [
     'max_queries_per_alumni' =>
         (int) env(
             'AUTO_ENRICHMENT_MAX_QUERIES',
-            4
+            1
         ),
 
 
@@ -97,7 +91,7 @@ return [
     'timeout' =>
         (int) env(
             'AUTO_ENRICHMENT_TIMEOUT',
-            20
+            60
         ),
 
 
@@ -119,6 +113,35 @@ return [
         'api_key' =>
             env(
                 'TAVILY_API_KEY'
+            ),
+
+    ],
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | GROK AI (xAI)
+    |--------------------------------------------------------------------------
+    */
+
+    'grok' => [
+
+        'endpoint' =>
+            env(
+                'GROK_SEARCH_ENDPOINT',
+                'https://api.x.ai/v1/chat/completions'
+            ),
+
+
+        'api_key' =>
+            env(
+                'GROK_API_KEY'
+            ),
+
+        'model' =>
+            env(
+                'GROK_MODEL',
+                'grok-4.6'
             ),
 
     ],

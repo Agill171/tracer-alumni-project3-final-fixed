@@ -8,7 +8,8 @@ use RuntimeException;
 class SearchProviderManager
 {
     public function __construct(
-        private TavilySearchProvider $tavily
+        private TavilySearchProvider $tavily,
+        private GrokSearchProvider $grok
     ) {
         //
     }
@@ -26,6 +27,9 @@ class SearchProviderManager
         return match ($provider) {
             'tavily' =>
                 $this->tavily,
+
+            'grok' =>
+                $this->grok,
 
             default =>
                 throw new RuntimeException(
