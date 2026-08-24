@@ -18,6 +18,10 @@
             <div class="flex flex-wrap items-center gap-2 text-sm">
                 <a href="{{ route('dashboard') }}" class="px-3 py-2 rounded-lg hover:bg-slate-800">Dashboard</a>
                 <a href="{{ route('alumni.index') }}" class="px-3 py-2 rounded-lg hover:bg-slate-800">Data Alumni</a>
+                
+                {{-- Tambahan Menu Pelacakan Batches --}}
+                <a href="{{ route('pelacakan-batches.index') }}" class="px-3 py-2 rounded-lg hover:bg-slate-800">Pelacakan Batches</a>
+                
                 <a href="{{ route('alumni.import.form') }}" class="px-3 py-2 rounded-lg hover:bg-slate-800">Import</a>
                 <a href="{{ route('settings.profile') }}" class="px-3 py-2 rounded-lg hover:bg-slate-800">Profil Admin</a>
 
