@@ -4,16 +4,11 @@
     {{-- ========================================================= --}}
     {{-- HEADER --}}
     {{-- ========================================================= --}}
-
     <div class="mb-8">
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div>
-                <h2 class="text-3xl font-bold text-slate-900">
-                    {{ $batch->nama_batch }}
-                </h2>
-                <p class="text-slate-600 mt-1">
-                    Detail alumni, query pencarian, dan progres enrichment Project 4.
-                </p>
+                <h2 class="text-3xl font-bold text-slate-900">{{ $batch->nama_batch }}</h2>
+                <p class="text-slate-600 mt-1">Detail alumni, query pencarian, dan progres enrichment Project 4.</p>
             </div>
             <a href="{{ route('pelacakan-batches.index') }}" class="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium">
                 ← Kembali ke Batch
@@ -24,11 +19,8 @@
     {{-- ========================================================= --}}
     {{-- FLASH --}}
     {{-- ========================================================= --}}
-
     @if(session('success'))
-        <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700">
-            {{ session('success') }}
-        </div>
+        <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700">{{ session('success') }}</div>
     @endif
 
     @if($errors->any())
@@ -45,7 +37,6 @@
     {{-- ========================================================= --}}
     {{-- INFO BATCH --}}
     {{-- ========================================================= --}}
-
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
         <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
             <div>
@@ -54,72 +45,62 @@
             </div>
             <div>
                 <p class="text-sm text-slate-500">Total Alumni</p>
-                <p class="text-xl font-bold text-slate-900 mt-1">
-                    {{ number_format($batch->total_items, 0, ',', '.') }}
-                </p>
+                <p class="text-xl font-bold text-slate-900 mt-1">{{ number_format($batch->total_items, 0, ',', '.') }}</p>
             </div>
             <div>
                 <p class="text-sm text-slate-500">Query Siap</p>
-                <p class="text-xl font-bold text-violet-600 mt-1">
-                    {{ number_format($batch->success_items, 0, ',', '.') }}
-                </p>
+                <p class="text-xl font-bold text-violet-600 mt-1">{{ number_format($batch->success_items, 0, ',', '.') }}</p>
             </div>
             <div>
                 <p class="text-sm text-slate-500">Gagal Query</p>
-                <p class="text-xl font-bold text-red-600 mt-1">
-                    {{ number_format($batch->failed_items, 0, ',', '.') }}
-                </p>
+                <p class="text-xl font-bold text-red-600 mt-1">{{ number_format($batch->failed_items, 0, ',', '.') }}</p>
             </div>
         </div>
         <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <p class="text-sm text-amber-800">
-                <strong>Query Siap ≠ data ditemukan.</strong>
-                Coverage Project 4 hanya meningkat setelah evidence benar-benar terverifikasi dan minimal satu kategori Project 4 terisi pada alumni.
+                <strong>Query Siap ≠ data ditemukan.</strong> Coverage Project 4 hanya meningkat setelah evidence benar-benar terverifikasi dan minimal satu kategori Project 4 terisi pada alumni.
             </p>
         </div>
     </div>
 
     {{-- ========================================================= --}}
-    {{-- AUTO ENRICHMENT (DIUBAH AGAR MEMBACA ENV LANGSUNG) --}}
+    {{-- AUTO ENRICHMENT (DIUBAH AGAR OTOMATIS DETEKSI GROK/TAVILY) --}}
     {{-- ========================================================= --}}
-
     @php
-        // BACA LANGSUNG ENV UNTUK MENGHINDARI CACHE LAMA
-        $enrichmentEnabledRaw = env('AUTO_ENRICHMENT_ENABLED', config('enrichment.enabled', false));
-        $enrichmentEnabled = filter_var($enrichmentEnabledRaw, FILTER_VALIDATE_BOOLEAN);
+        // Deteksi Provider Aktif
+        $provider = env('AUTO_ENRICHMENT_PROVIDER', config('enrichment.provider', 'tavily'));
+        $enrichmentEnabled = filter_var(env('AUTO_ENRICHMENT_ENABLED', config('enrichment.enabled', false)), FILTER_VALIDATE_BOOLEAN);
 
-        $tavilyKey = env('TAVILY_API_KEY', config('enrichment.tavily.api_key'));
-        $tavilyReady = filled($tavilyKey);
+        // Cek API Key sesuai Provider
+        if ($provider === 'grok') {
+            $apiKey = env('GROK_API_KEY', config('enrichment.grok.api_key'));
+            $apiLabel = 'GROK_API_KEY';
+        } else {
+            $apiKey = env('TAVILY_API_KEY', config('enrichment.tavily.api_key'));
+            $apiLabel = 'TAVILY_API_KEY';
+        }
+        $apiReady = filled($apiKey);
 
         $enrichmentRunning = $batch->status === \App\Models\PelacakanBatch::STATUS_ENRICHMENT;
         $enrichmentCompleted = (int) $batch->total_items > 0 && (int) ($batch->enrichment_processed_items ?? 0) >= (int) $batch->total_items;
-
-        // DEBUG: Tampilkan status Environment di layar
-        $debugEnabled = $enrichmentEnabled ? 'TRUE' : 'FALSE';
-        $debugKey = $tavilyReady ? 'ADA' : 'KOSONG';
     @endphp
-
-    {{-- KOTAK DEBUG (Hapus setelah tombol muncul) --}}
-    <div class="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 text-sm font-bold rounded">
-        [DEBUG] Env: {{ $debugEnabled }} | Key: {{ $debugKey }}
-    </div>
 
     <div class="bg-white rounded-2xl shadow-sm border border-violet-200 p-6 mb-8">
         <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
             <div class="max-w-3xl">
                 <div class="flex flex-wrap items-center gap-3">
                     <h3 class="text-xl font-semibold text-slate-900">Auto Enrichment Project 4</h3>
-                    @if($enrichmentEnabled && $tavilyReady)
-                        <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">Tavily Ready</span>
+                    @if($enrichmentEnabled && $apiReady)
+                        <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">{{ strtoupper($provider) }} Ready</span>
                     @else
                         <span class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">Belum Siap</span>
                     @endif
                 </div>
                 <p class="text-sm text-slate-600 mt-2">
-                    Sistem mengambil query alumni yang sudah disiapkan, menjalankan pencarian melalui Tavily Search API, mencocokkan identitas kandidat, kemudian mengelompokkan hasil menjadi Teridentifikasi, Perlu Verifikasi, Tidak Ditemukan, atau Gagal.
+                    Sistem mengambil query alumni yang sudah disiapkan, menjalankan pencarian melalui <strong>{{ strtoupper($provider) }}</strong>, mencocokkan identitas kandidat, kemudian mengelompokkan hasil menjadi Teridentifikasi, Perlu Verifikasi, Tidak Ditemukan, atau Gagal.
                 </p>
                 <div class="mt-4 flex flex-wrap gap-2 text-xs">
-                    <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Provider: <strong>{{ strtoupper(env('AUTO_ENRICHMENT_PROVIDER', config('enrichment.provider', 'tavily'))) }}</strong></span>
+                    <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Provider: <strong>{{ strtoupper($provider) }}</strong></span>
                     <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Max Query: <strong>{{ env('AUTO_ENRICHMENT_MAX_QUERIES', config('enrichment.max_queries_per_alumni', 4)) }}</strong></span>
                     <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Hasil / Query: <strong>{{ env('AUTO_ENRICHMENT_RESULTS_PER_QUERY', config('enrichment.results_per_query', 5)) }}</strong></span>
                     <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">Strong: <strong>≥ {{ env('AUTO_ENRICHMENT_STRONG_THRESHOLD', config('enrichment.strong_threshold', 80)) }}%</strong></span>
@@ -128,23 +109,19 @@
             </div>
 
             {{-- ================================================= --}}
-            {{-- BUTTON --}}
+            {{-- BUTTON (FINAL) --}}
             {{-- ================================================= --}}
             <div class="shrink-0">
                 @if(!$enrichmentEnabled)
                     <button type="button" disabled class="px-5 py-3 rounded-xl bg-slate-300 text-slate-600 font-semibold cursor-not-allowed">
                         Auto Enrichment Nonaktif
                     </button>
-                    <p class="text-xs text-red-600 mt-2 max-w-xs">
-                        Cek ENV: AUTO_ENRICHMENT_ENABLED harus "true" di Web Service Railway.
-                    </p>
-                @elseif(!$tavilyReady)
+                    <p class="text-xs text-red-600 mt-2 max-w-xs">Cek ENV: AUTO_ENRICHMENT_ENABLED harus "true" di Web Service Railway.</p>
+                @elseif(!$apiReady)
                     <button type="button" disabled class="px-5 py-3 rounded-xl bg-slate-300 text-slate-600 font-semibold cursor-not-allowed">
-                        Tavily API Key Belum Ada
+                        {{ strtoupper($provider) }} API Key Belum Ada
                     </button>
-                    <p class="text-xs text-red-600 mt-2 max-w-xs">
-                        Cek ENV: TAVILY_API_KEY harus diisi di Web Service Railway.
-                    </p>
+                    <p class="text-xs text-red-600 mt-2 max-w-xs">Cek ENV: {{ $apiLabel }} harus diisi di Web Service Railway.</p>
                 @elseif($enrichmentCompleted)
                     <button type="button" disabled class="px-5 py-3 rounded-xl bg-emerald-100 text-emerald-700 font-semibold cursor-not-allowed">
                         ✓ Auto Enrichment Selesai
@@ -155,23 +132,18 @@
                         Auto Enrichment Diproses...
                     </button>
                 @else
-                    <form action="{{ route('pelacakan-batches.enrichment.start', $batch) }}" method="POST" onsubmit="return confirm('Mulai Auto Enrichment untuk batch ini? Tavily API credits akan digunakan.');">
+                    <form action="{{ route('pelacakan-batches.enrichment.start', $batch) }}" method="POST" onsubmit="return confirm('Mulai Auto Enrichment untuk batch ini? Kredit API akan digunakan.');">
                         @csrf
                         <button type="submit" class="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm">
                             🚀 Mulai Auto Enrichment
                         </button>
                     </form>
-                    <p class="text-xs text-slate-500 mt-2 max-w-xs">
-                        Setelah ditekan, jalankan queue worker khusus local-enrichment.
-                    </p>
+                    <p class="text-xs text-slate-500 mt-2 max-w-xs">Setelah ditekan, jalankan queue worker khusus local-enrichment.</p>
                 @endif
             </div>
         </div>
 
-        {{-- ===================================================== --}}
         {{-- PROGRESS --}}
-        {{-- ===================================================== --}}
-
         <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-6">
             <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
                 <p class="text-xs text-blue-600">Diproses</p>
@@ -204,9 +176,8 @@
     </div>
 
     {{-- ========================================================= --}}
-    {{-- ITEMS --}}
+    {{-- ITEMS (Sisanya sama seperti sebelumnya) --}}
     {{-- ========================================================= --}}
-
     <div class="space-y-6">
         @forelse($items as $item)
             @php
