@@ -175,11 +175,6 @@ Perintah tambahan untuk menjalankan queue dan scheduler
 php artisan queue:work
 php artisan schedule:work
 ```
-
-## Akun 
-Email: admin@traceralumni.test  
-Password: TracerAlumni#Aman2026
-
 ## Link Project
 Repository GitHub: https://github.com/Agill171/tracer-alumni-project3-final-fixed
 
